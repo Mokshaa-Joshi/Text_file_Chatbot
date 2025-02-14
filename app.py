@@ -39,8 +39,8 @@ def chunk_text(text, chunk_size=1000):  # ✅ Increased chunk size for better co
     return [encoding.decode(tokens[i : i + chunk_size]) for i in range(0, len(tokens), chunk_size)]
 
 # ---- STREAMLIT UI ----
-st.title("Chatbot for TXT File")
-uploaded_file = st.file_uploader("Upload a TXT file", type="txt")
+st.title("Chatbot for Text File")
+uploaded_file = st.file_uploader("Upload a Text file", type="txt")
 
 if uploaded_file:
     text = uploaded_file.read().decode("utf-8")
