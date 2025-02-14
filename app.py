@@ -16,8 +16,15 @@ MONGO_URI = os.getenv("MONGO_URI")
 # ---- CONNECT TO PINECONE ----
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index_name = "txt"
+
 if index_name not in pc.list_indexes():
-    pc.create_index(index_name, dimension=1536, metric="cosine")
+    pc.create_index(
+        name=index_name, 
+        dimension=1536, 
+        metric="cosine", 
+        spec={"pod_type": "p1"}  # ✅ Fixed: Added 'spec'
+    )
+
 index = pc.Index(index_name)
 
 # ---- CONNECT TO MONGODB ----
