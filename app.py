@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENV = os.getenv("PINECONE_ENV")
-MONGO_URI = os.getenv("MONGO_URI")"
+MONGO_URI = os.getenv("MONGO_URI")
 
 # ---- CONNECT TO PINECONE ----
 pc = Pinecone(api_key=PINECONE_API_KEY)
