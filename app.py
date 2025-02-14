@@ -7,10 +7,10 @@ import tiktoken
 import os
 from dotenv import load_dotenv
 
-# ---- CONFIGURE API KEYS ----
-openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# ---- LOAD ENVIRONMENT VARIABLES ----
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-PINECONE_ENV = os.getenv("PINECONE_ENV")
 MONGO_URI = os.getenv("MONGO_URI")
 
 # ---- CONNECT TO PINECONE ----
@@ -25,14 +25,14 @@ client = MongoClient(MONGO_URI)
 db = client["txt_chatbot"]
 collection = db["documents"]
 
-# ---- TOKENIZER FOR CHUNKING ----
+# ---- FUNCTION TO CHUNK TEXT ----
 def chunk_text(text, chunk_size=500):
     encoding = tiktoken.encoding_for_model("text-embedding-ada-002")
     tokens = encoding.encode(text)
     return [encoding.decode(tokens[i : i + chunk_size]) for i in range(0, len(tokens), chunk_size)]
 
-# ---- FILE UPLOAD ----
-st.title("Q&A Chatbot")
+# ---- STREAMLIT UI ----
+st.title("📄 Q&A Chatbot from TXT File")
 uploaded_file = st.file_uploader("Upload a TXT file", type="txt")
 
 if uploaded_file:
@@ -60,15 +60,18 @@ if query:
     # Search in Pinecone
     results = index.query(vector=query_embedding, top_k=3, include_metadata=True)
 
-    # Fetch top match from MongoDB
-    top_match = results["matches"][0]["id"]
-    doc = collection.find_one({"chunk_id": int(top_match)})
+    if results and results.get("matches"):
+        # Fetch top match from MongoDB
+        top_match = results["matches"][0]["id"]
+        doc = collection.find_one({"chunk_id": int(top_match)})
 
-    # Get answer from OpenAI
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": "Answer based on the document."},
-                  {"role": "user", "content": f"Context: {doc['text']}\nQuestion: {query}"}]
-    )
+        # Get answer from OpenAI
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "system", "content": "Answer based on the document."},
+                      {"role": "user", "content": f"Context: {doc['text']}\nQuestion: {query}"}]
+        )
 
-    st.write("**Answer:**", response["choices"][0]["message"]["content"])
+        st.write("**Answer:**", response["choices"][0]["message"]["content"])
+    else:
+        st.warning("No relevant data found.")
