@@ -39,14 +39,14 @@ def chunk_text(text, chunk_size=1000):  # ✅ Increased chunk size for better co
     return [encoding.decode(tokens[i : i + chunk_size]) for i in range(0, len(tokens), chunk_size)]
 
 # ---- STREAMLIT UI ----
-st.title("📄 Q&A Chatbot from TXT File")
+st.title("Chatbot for TXT File")
 uploaded_file = st.file_uploader("Upload a TXT file", type="txt")
 
 if uploaded_file:
     text = uploaded_file.read().decode("utf-8")
     chunks = chunk_text(text)
 
-    st.success(f"✅ File processed into {len(chunks)} chunks.")
+    st.success(f" File processed into {len(chunks)} chunks.")
 
     for i, chunk in enumerate(chunks):
         # ✅ Check if chunk already exists in MongoDB
@@ -61,7 +61,7 @@ if uploaded_file:
         embedding = openai.embeddings.create(input=chunk, model="text-embedding-ada-002").data[0].embedding
         index.upsert([(str(i), embedding)])
 
-    st.success("✅ Data stored successfully!")
+    st.success(" Data stored successfully!")
 
 # ---- Q&A CHAT ----
 query = st.text_input("Ask a question:")
