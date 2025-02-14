@@ -22,7 +22,7 @@ if index_name not in pc.list_indexes().names():
         name=index_name, 
         dimension=1536, 
         metric="cosine", 
-        #spec={"serverless": {"cloud": "aws", "region": "us-east-1"}}  # ✅ Fixed: Use correct 'spec'
+        spec={"serverless": {"cloud": "aws", "region": "us-east-1"}}  # ✅ Corrected Spec
     )
 
 index = pc.Index(index_name)
@@ -33,7 +33,7 @@ db = client["txt_chatbot"]
 collection = db["documents"]
 
 # ---- FUNCTION TO CHUNK TEXT ----
-def chunk_text(text, chunk_size=500):
+def chunk_text(text, chunk_size=1000):  # ✅ Increased chunk size for better context
     encoding = tiktoken.encoding_for_model("text-embedding-ada-002")
     tokens = encoding.encode(text)
     return [encoding.decode(tokens[i : i + chunk_size]) for i in range(0, len(tokens), chunk_size)]
@@ -68,19 +68,26 @@ query = st.text_input("Ask a question:")
 if query:
     query_embedding = openai.embeddings.create(input=query, model="text-embedding-ada-002").data[0].embedding
 
-    # Search in Pinecone
-    results = index.query(vector=query_embedding, top_k=3, include_metadata=True)
+    # ✅ Retrieve multiple chunks to improve answer quality
+    results = index.query(vector=query_embedding, top_k=5, include_metadata=True)
 
     if results and results.get("matches"):
-        # Fetch top match from MongoDB
-        top_match = results["matches"][0]["id"]
-        doc = collection.find_one({"chunk_id": int(top_match)})
+        # ✅ Fetch multiple chunks and merge them
+        matched_chunks = []
+        for match in results["matches"]:
+            doc = collection.find_one({"chunk_id": int(match["id"])})
+            if doc:
+                matched_chunks.append(doc["text"])
 
-        # Get answer from OpenAI
+        combined_context = " ".join(matched_chunks)  # Merge multiple chunks
+
+        # ✅ Improve OpenAI prompt to force answering from the document
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "system", "content": "Answer based on the document."},
-                      {"role": "user", "content": f"Context: {doc['text']}\nQuestion: {query}"}]
+            messages=[
+                {"role": "system", "content": "You are a document-based Q&A chatbot. Only answer using the provided text. Do not make up information."},
+                {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}\n\nAnswer strictly based on the above context."}
+            ]
         )
 
         st.write("**Answer:**", response.choices[0].message.content)
