@@ -22,7 +22,7 @@ if index_name not in pc.list_indexes().names():
         name=index_name, 
         dimension=1536, 
         metric="cosine", 
-        spec={"serverless": {"cloud": "aws", "region": "us-east-1"}}  # ✅ Corrected Spec
+        spec={"serverless": {"cloud": "aws", "region": "us-east-1"}}  
     )
 
 index = pc.Index(index_name)
@@ -33,7 +33,7 @@ db = client["txt_chatbot"]
 collection = db["documents"]
 
 # ---- FUNCTION TO CHUNK TEXT ----
-def chunk_text(text, chunk_size=1000):  # ✅ Increased chunk size for better context
+def chunk_text(text, chunk_size=1000):  
     encoding = tiktoken.encoding_for_model("text-embedding-ada-002")
     tokens = encoding.encode(text)
     return [encoding.decode(tokens[i : i + chunk_size]) for i in range(0, len(tokens), chunk_size)]
@@ -49,15 +49,15 @@ if uploaded_file:
     st.success(f" File processed into {len(chunks)} chunks.")
 
     for i, chunk in enumerate(chunks):
-        # ✅ Check if chunk already exists in MongoDB
+        
         if collection.find_one({"text": chunk}):
-            continue  # Skip duplicate chunks
+            continue  
 
         # Store in MongoDB
         doc = {"chunk_id": i, "text": chunk}
         collection.insert_one(doc)
 
-        # ✅ Use new OpenAI Embedding API format
+       
         embedding = openai.embeddings.create(input=chunk, model="text-embedding-ada-002").data[0].embedding
         index.upsert([(str(i), embedding)])
 
@@ -68,20 +68,20 @@ query = st.text_input("Ask a question:")
 if query:
     query_embedding = openai.embeddings.create(input=query, model="text-embedding-ada-002").data[0].embedding
 
-    # ✅ Retrieve multiple chunks to improve answer quality
+    
     results = index.query(vector=query_embedding, top_k=5, include_metadata=True)
 
     if results and results.get("matches"):
-        # ✅ Fetch multiple chunks and merge them
+        
         matched_chunks = []
         for match in results["matches"]:
             doc = collection.find_one({"chunk_id": int(match["id"])})
             if doc:
                 matched_chunks.append(doc["text"])
 
-        combined_context = " ".join(matched_chunks)  # Merge multiple chunks
+        combined_context = " ".join(matched_chunks)  
 
-        # ✅ Improve OpenAI prompt to force answering from the document
+        
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
