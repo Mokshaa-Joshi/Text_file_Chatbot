@@ -22,7 +22,7 @@ if index_name not in pc.list_indexes().names():
         name=index_name, 
         dimension=1536, 
         metric="cosine", 
-        #spec={"pod_type": "p1"}  # ✅ Fixed: Added 'spec'
+        #spec={"serverless": {"cloud": "aws", "region": "us-east-1"}}  # ✅ Fixed: Use correct 'spec'
     )
 
 index = pc.Index(index_name)
@@ -49,12 +49,16 @@ if uploaded_file:
     st.success(f"✅ File processed into {len(chunks)} chunks.")
 
     for i, chunk in enumerate(chunks):
+        # ✅ Check if chunk already exists in MongoDB
+        if collection.find_one({"text": chunk}):
+            continue  # Skip duplicate chunks
+
         # Store in MongoDB
         doc = {"chunk_id": i, "text": chunk}
         collection.insert_one(doc)
 
-        # Store in Pinecone
-        embedding = openai.Embedding.create(input=chunk, model="text-embedding-ada-002")["data"][0]["embedding"]
+        # ✅ Use new OpenAI Embedding API format
+        embedding = openai.embeddings.create(input=chunk, model="text-embedding-ada-002").data[0].embedding
         index.upsert([(str(i), embedding)])
 
     st.success("✅ Data stored successfully!")
@@ -62,7 +66,7 @@ if uploaded_file:
 # ---- Q&A CHAT ----
 query = st.text_input("Ask a question:")
 if query:
-    query_embedding = openai.Embedding.create(input=query, model="text-embedding-ada-002")["data"][0]["embedding"]
+    query_embedding = openai.embeddings.create(input=query, model="text-embedding-ada-002").data[0].embedding
 
     # Search in Pinecone
     results = index.query(vector=query_embedding, top_k=3, include_metadata=True)
@@ -73,12 +77,12 @@ if query:
         doc = collection.find_one({"chunk_id": int(top_match)})
 
         # Get answer from OpenAI
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "system", "content": "Answer based on the document."},
                       {"role": "user", "content": f"Context: {doc['text']}\nQuestion: {query}"}]
         )
 
-        st.write("**Answer:**", response["choices"][0]["message"]["content"])
+        st.write("**Answer:**", response.choices[0].message.content)
     else:
         st.warning("No relevant data found.")
