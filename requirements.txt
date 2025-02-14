@@ -3,3 +3,6 @@ openai
 pymongo
 pinecone-client
 tiktoken
+requests
+python-dotenv
+deep-translator
